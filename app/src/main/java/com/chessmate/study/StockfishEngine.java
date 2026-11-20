@@ -43,7 +43,7 @@ public final class StockfishEngine {
                     }
                     if(line.startsWith("bestmove ")){best=line.split(" ")[1];break;}
                 }
-                result=best.isEmpty()?"Análise sem resposta do motor":"Melhor lance (UCI): "+best+"\nAvaliação: "+score;
+                result=best.isEmpty()?"Análise sem resposta do motor":"bestmove="+best+" | avaliação="+score;
                 send(out,"quit");
             } catch(Exception e){result="Erro no Stockfish: "+e.getMessage();}
             finally {if(p!=null)p.destroy();}
