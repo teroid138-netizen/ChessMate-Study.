@@ -8,6 +8,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.content.SharedPreferences;
+import java.util.ArrayList;
 import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
@@ -23,6 +25,8 @@ public class MainActivity extends Activity {
     private GridLayout board;
     private TextView status;
     private int selected = -1;
+    private final ArrayList<String> history = new ArrayList<>();
+    private TextView historyView;
     private String currentFen = START;
 
     @Override public void onCreate(Bundle savedInstanceState) {
@@ -59,6 +63,12 @@ public class MainActivity extends Activity {
         load.setText("Carregar posição FEN");
         load.setOnClickListener(v -> loadFen());
         root.addView(load);
+        historyView = label("Histórico: nenhuma posição salva", 13, 0xFFCBD5E1);
+        root.addView(historyView);
+        Button previous = new Button(this);
+        previous.setText("Voltar à posição anterior");
+        previous.setOnClickListener(v -> restorePrevious());
+        root.addView(previous);
         Button reset = new Button(this);
         reset.setText("Reiniciar tabuleiro");
         reset.setOnClickListener(v -> { fenInput.setText(START); loadFen(); });
@@ -66,14 +76,23 @@ public class MainActivity extends Activity {
         TextView note = label("Versão inicial: exibição de posições e validação FEN. Motor Stockfish, reconhecimento de tela e análise automática ainda não estão integrados.",13,0xFF94A3B8);
         note.setPadding(0,dp(12),0,0);
         root.addView(note);
-        draw(START);
+        SharedPreferences prefs = getSharedPreferences("chessmate", MODE_PRIVATE);
+        String last = prefs.getString("last_fen", START);
+        fenInput.setText(last);
+        loadFen();
     }
 
     private void loadFen() {
         String f = fenInput.getText().toString().trim();
         try {
             validateFen(f);
+            if (!currentFen.equals(f)) {
+                history.add(currentFen);
+                if (history.size() > 20) history.remove(0);
+            }
             currentFen = f;
+            getSharedPreferences("chessmate", MODE_PRIVATE).edit().putString("last_fen", f).apply();
+            historyView.setText("Posições anteriores nesta sessão: " + history.size());
             selected = -1;
             draw(f);
             status.setText("FEN válida • " + (f.split("\\s+")[1].equals("w") ? "Brancas" : "Pretas") + " jogam");
@@ -82,6 +101,20 @@ public class MainActivity extends Activity {
             status.setText("FEN inválida: " + ex.getMessage());
             status.setTextColor(0xFFFCA5A5);
         }
+    }
+
+    private void restorePrevious() {
+        if (history.isEmpty()) {
+            status.setText("Nenhuma posição anterior nesta sessão");
+            return;
+        }
+        String prior = history.remove(history.size()-1);
+        currentFen = prior;
+        fenInput.setText(prior);
+        draw(prior);
+        historyView.setText("Posições anteriores nesta sessão: " + history.size());
+        status.setText("Posição anterior restaurada");
+        getSharedPreferences("chessmate", MODE_PRIVATE).edit().putString("last_fen", prior).apply();
     }
 
     public static void validateFen(String fen) {
