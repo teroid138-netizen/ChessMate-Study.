@@ -82,7 +82,11 @@ public class MainActivity extends Activity {
             try {
                 validateFen(fenInput.getText().toString().trim());
                 status.setText("Stockfish analisando...");
-                new StockfishEngine(this).analyze(fenInput.getText().toString().trim(), 12, result -> status.setText(result));
+                new StockfishEngine(this).analyze(fenInput.getText().toString().trim(), 12, result -> {
+                    status.setText(result);
+                    java.util.regex.Matcher match=java.util.regex.Pattern.compile("Melhor lance \\(UCI\\): ([a-h][1-8][a-h][1-8][qrbn]?)").matcher(result);
+                    if(match.find()) board.setForeground(new MoveArrowDrawable(match.group(1)));
+                });
             } catch(IllegalArgumentException e){status.setText("FEN inválida: "+e.getMessage());}
         });
         root.addView(analyze);
@@ -209,6 +213,7 @@ public class MainActivity extends Activity {
     }
 
     private void draw(String fen) {
+        board.setForeground(null);
         board.removeAllViews();
         int width=getResources().getDisplayMetrics().widthPixels-dp(32);
         int cell=width/8;
