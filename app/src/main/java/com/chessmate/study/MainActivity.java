@@ -66,10 +66,12 @@ public class MainActivity extends Activity {
         fenInput.setMinLines(2);
         fenInput.setHint("FEN com 6 campos");
         root.addView(fenInput);
+        fenInput.setVisibility(View.GONE);
         Button load = new Button(this);
         load.setText("Carregar posição FEN");
         load.setOnClickListener(v -> loadFen());
         root.addView(load);
+        load.setVisibility(View.GONE);
         historyView = label("Histórico: nenhuma posição salva", 13, 0xFFCBD5E1);
         root.addView(historyView);
         Button previous = new Button(this);
@@ -80,16 +82,17 @@ public class MainActivity extends Activity {
         analyze.setText("Analisar posição com Stockfish");
         analyze.setOnClickListener(v -> {
             try {
-                validateFen(fenInput.getText().toString().trim());
+                validateFen(currentFen);
                 status.setText("Stockfish analisando...");
-                new StockfishEngine(this).analyze(fenInput.getText().toString().trim(), 12, result -> {
+                new StockfishEngine(this).analyze(currentFen, 14, result -> {
                     status.setText(result);
-                    java.util.regex.Matcher match=java.util.regex.Pattern.compile("Melhor lance \\(UCI\\): ([a-h][1-8][a-h][1-8][qrbn]?)").matcher(result);
+                    java.util.regex.Matcher match=java.util.regex.Pattern.compile("bestmove=([a-h][1-8][a-h][1-8][qrbn]?)").matcher(result);
                     if(match.find()) board.setForeground(new MoveArrowDrawable(match.group(1)));
                 });
             } catch(IllegalArgumentException e){status.setText("FEN inválida: "+e.getMessage());}
         });
         root.addView(analyze);
+        analyze.setText("Mostrar melhor movimento ♞");
         Button overlay = new Button(this);
         overlay.setText("Ativar / desativar ícone flutuante");
         overlay.setOnClickListener(v -> {
@@ -123,13 +126,13 @@ public class MainActivity extends Activity {
         screenshotPreview.setAdjustViewBounds(true);
         screenshotPreview.setMaxHeight(dp(300));
         root.addView(screenshotPreview);
-        TextView recognitionNote=label("Imagem importada apenas para referência visual. Reconhecimento automático das peças ainda não implementado; confira e informe a FEN manualmente.",12,0xFFCBD5E1);
+        TextView recognitionNote=label("Imagem importada para estudo. Reconhecimento automático ainda está em desenvolvimento.",12,0xFFCBD5E1);
         root.addView(recognitionNote);
         Button reset = new Button(this);
         reset.setText("Reiniciar tabuleiro");
         reset.setOnClickListener(v -> { fenInput.setText(START); loadFen(); });
         root.addView(reset);
-        TextView note = label("Versão inicial: exibição de posições e validação FEN. Motor Stockfish, reconhecimento de tela e análise automática ainda não estão integrados.",13,0xFF94A3B8);
+        TextView note = label("Análise de posições de estudo e partidas concluídas.",13,0xFF94A3B8);
         note.setPadding(0,dp(12),0,0);
         root.addView(note);
         SharedPreferences prefs = getSharedPreferences("chessmate", MODE_PRIVATE);
