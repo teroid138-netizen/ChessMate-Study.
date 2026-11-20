@@ -66,12 +66,12 @@ public class MainActivity extends Activity {
         fenInput.setMinLines(2);
         fenInput.setHint("FEN com 6 campos");
         root.addView(fenInput);
-        fenInput.setVisibility(View.GONE);
+
         Button load = new Button(this);
         load.setText("Carregar posição FEN");
         load.setOnClickListener(v -> loadFen());
         root.addView(load);
-        load.setVisibility(View.GONE);
+
         historyView = label("Histórico: nenhuma posição salva", 13, 0xFFCBD5E1);
         root.addView(historyView);
         Button previous = new Button(this);
