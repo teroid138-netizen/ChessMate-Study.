@@ -1,6 +1,11 @@
 package com.chessmate.study;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.provider.Settings;
+import android.os.Build;
+import android.widget.ImageView;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -28,6 +33,8 @@ public class MainActivity extends Activity {
     private final ArrayList<String> history = new ArrayList<>();
     private TextView historyView;
     private String currentFen = START;
+    private static final int PICK_IMAGE = 700;
+    private ImageView screenshotPreview;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -69,6 +76,51 @@ public class MainActivity extends Activity {
         previous.setText("Voltar à posição anterior");
         previous.setOnClickListener(v -> restorePrevious());
         root.addView(previous);
+        Button analyze = new Button(this);
+        analyze.setText("Analisar posição com Stockfish");
+        analyze.setOnClickListener(v -> {
+            try {
+                validateFen(fenInput.getText().toString().trim());
+                status.setText("Stockfish analisando...");
+                new StockfishEngine(this).analyze(fenInput.getText().toString().trim(), 12, result -> status.setText(result));
+            } catch(IllegalArgumentException e){status.setText("FEN inválida: "+e.getMessage());}
+        });
+        root.addView(analyze);
+        Button overlay = new Button(this);
+        overlay.setText("Ativar / desativar ícone flutuante");
+        overlay.setOnClickListener(v -> {
+            if(Build.VERSION.SDK_INT>=23 && !Settings.canDrawOverlays(this)){
+                Intent permission=new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:"+getPackageName()));
+                startActivity(permission);
+                status.setText("Autorize sobreposição e toque novamente para ativar");
+                return;
+            }
+            if(getPreferences(MODE_PRIVATE).getBoolean("overlay",false)){
+                stopService(new Intent(this,StudyOverlayService.class));
+                getPreferences(MODE_PRIVATE).edit().putBoolean("overlay",false).apply();
+                status.setText("Ícone flutuante desativado");
+            } else {
+                startService(new Intent(this,StudyOverlayService.class));
+                getPreferences(MODE_PRIVATE).edit().putBoolean("overlay",true).apply();
+                status.setText("Ícone flutuante ativado: abre o ChessMate Study");
+            }
+        });
+        root.addView(overlay);
+        Button importImage = new Button(this);
+        importImage.setText("Importar imagem de tabuleiro para estudo");
+        importImage.setOnClickListener(v -> {
+            Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.setType("image/*");intent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(intent,PICK_IMAGE);
+        });
+        root.addView(importImage);
+        screenshotPreview=new ImageView(this);
+        screenshotPreview.setAdjustViewBounds(true);
+        screenshotPreview.setMaxHeight(dp(300));
+        root.addView(screenshotPreview);
+        TextView recognitionNote=label("Imagem importada apenas para referência visual. Reconhecimento automático das peças ainda não implementado; confira e informe a FEN manualmente.",12,0xFFCBD5E1);
+        root.addView(recognitionNote);
         Button reset = new Button(this);
         reset.setText("Reiniciar tabuleiro");
         reset.setOnClickListener(v -> { fenInput.setText(START); loadFen(); });
@@ -80,6 +132,14 @@ public class MainActivity extends Activity {
         String last = prefs.getString("last_fen", START);
         fenInput.setText(last);
         loadFen();
+    }
+
+    @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){
+        super.onActivityResult(requestCode,resultCode,data);
+        if(requestCode==PICK_IMAGE && resultCode==RESULT_OK && data!=null){
+            screenshotPreview.setImageURI(data.getData());
+            status.setText("Imagem carregada para estudo. Informe a FEN correspondente.");
+        }
     }
 
     private void loadFen() {
